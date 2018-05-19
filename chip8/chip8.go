@@ -76,7 +76,7 @@ func (c *Chip8) Initialize() {
 
 	// Load fontset
 	for i := 0; i < len(chip8Fontset); i++ {
-		c.memory[0x0A0+i] = chip8Fontset[i]
+		c.memory[i] = chip8Fontset[i]
 	}
 	// Reset timers
 	c.delayTimer = 0
