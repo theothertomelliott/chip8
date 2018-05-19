@@ -242,22 +242,23 @@ func (c *Chip8) EmulateCycle() error {
 			c.pc += 2
 		case 0x0006:
 			log.Printf("V%d=V%d=V%d>>1\n", x, y, y)
-			// TODO:
-			// Shifts VY right by one and stores the result to VX (VY remains unchanged).
-			// VF is set to the value of the least significant bit of VY before the shift.[2]
+			c.V[x] = c.V[y] >> 1
+			c.V[0xF] = c.V[y] & 0x01
 			c.pc += 2
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0007:
 			log.Printf("V%d=V%d-V%d\n", x, y, x)
-			// TODO:
-			// Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
+			if c.V[x] > c.V[y] {
+				c.V[0xF] = 0 //borrow
+			} else {
+				c.V[0xF] = 1
+			}
+			c.V[x] = c.V[y] - c.V[x]
 			c.pc += 2
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x000E:
 			log.Printf("V%d=V%d=V%d<<1\n", x, y, y)
-			// TODO:
-			// Shifts VY left by one and copies the result to VX.
-			// VF is set to the value of the most significant bit of VY before the shift.
+			c.V[x] = c.V[y] << 1
+			c.V[0xF] = c.V[y] & 0x80
+			c.pc += 2
 			c.pc += 2
 			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		default:
@@ -346,9 +347,14 @@ func (c *Chip8) EmulateCycle() error {
 			c.pc += 2
 			log.Println("Vx = get_delay()")
 		case 0x000A:
-			// TODO:
+			for index, k := range c.key {
+				if k != 0 {
+					c.V[x] = byte(index)
+					c.pc += 2
+					break
+				}
+			}
 			log.Println("Vx = get_key()")
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0015:
 			c.delayTimer = c.V[x]
 			c.pc += 2
@@ -379,10 +385,11 @@ func (c *Chip8) EmulateCycle() error {
 			log.Printf("*(I + 1) = BCD(2)\n")
 			log.Printf("*(I + 2) = BCD(1)\n")
 		case 0x0055:
-			// TODO:
+			for i := uint16(0); i <= x; i++ {
+				c.memory[c.I+i] = c.V[i]
+			}
 			log.Println("reg_dump(Vx, &I)")
 			c.pc += 2
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0065:
 			for i := uint16(0); i <= x; i++ {
 				c.V[i] = c.memory[c.I+i]
@@ -401,12 +408,10 @@ func (c *Chip8) EmulateCycle() error {
 	case <-c.timerClock.C:
 		// Update timers
 		if c.delayTimer > 0 {
-			// TODO: This should be at 60Hz
 			c.delayTimer--
 		}
 
 		if c.soundTimer > 0 {
-			// TODO: This should also be at 60Hz
 			if c.soundTimer == 1 {
 				log.Println("BEEP!")
 				c.soundTimer--

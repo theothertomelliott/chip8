@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
@@ -45,6 +46,8 @@ func run() {
 		}
 
 		handleKeys(myChip8)
+
+		time.Sleep(time.Second / 300)
 	}
 }
 
@@ -73,8 +76,7 @@ func handleKeys(myChip8 *chip8.Chip8) {
 	for index, key := range keyByIndex {
 		if win.JustPressed(key) {
 			myChip8.SetKey(byte(index), true)
-		}
-		if win.JustReleased(key) {
+		} else if win.JustReleased(key) {
 			myChip8.SetKey(byte(index), false)
 		}
 	}
