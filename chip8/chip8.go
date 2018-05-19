@@ -54,6 +54,14 @@ type Chip8 struct {
 	drawFlag bool
 }
 
+func (c *Chip8) SetKey(index byte, down bool) {
+	if down {
+		c.key[index] = 1
+	} else {
+		c.key[index] = 0
+	}
+}
+
 func (c *Chip8) GetGraphics() [64 * 32]byte {
 	return c.gfx
 }
@@ -291,11 +299,15 @@ func (c *Chip8) EmulateCycle() error {
 		for yline := uint16(0); yline < height; yline++ {
 			pixel = uint16(c.memory[c.I+yline])
 			for xline := uint16(0); xline < 8; xline++ {
+				index := (x + xline + ((y + yline) * 64))
+				if index > uint16(len(c.gfx)) {
+					continue
+				}
 				if (pixel & (0x80 >> xline)) != 0 {
-					if c.gfx[(x+xline+((y+yline)*64))] == 1 {
+					if c.gfx[index] == 1 {
 						c.V[0xF] = 1
 					}
-					c.gfx[x+xline+((y+yline)*64)] ^= 1
+					c.gfx[index] ^= 1
 				}
 			}
 		}
@@ -307,17 +319,19 @@ func (c *Chip8) EmulateCycle() error {
 		x := (c.opcode & 0x0F00) >> 8
 		switch c.opcode & 0x00FF {
 		case 0x009E:
-			// TODO:
-			// Skips the next instruction if the key stored in VX is pressed.
-			// (Usually the next instruction is a jump to skip a code block)
 			fmt.Printf("if(key()==V%d)\n", x)
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+			if c.key[c.V[x]] != 0 {
+				c.pc += 4
+			} else {
+				c.pc += 2
+			}
 		case 0x00A1:
-			// TODO:
-			// Skips the next instruction if the key stored in VX isn't pressed.
-			// (Usually the next instruction is a jump to skip a code block)
 			fmt.Printf("if(key()!=V%d)\n", x)
-			c.pc += 2
+			if c.key[c.V[x]] == 0 {
+				c.pc += 4
+			} else {
+				c.pc += 2
+			}
 		}
 
 	case 0xF000:
@@ -397,8 +411,4 @@ func (c *Chip8) DrawFlag() bool {
 	flag := c.drawFlag
 	c.drawFlag = false
 	return flag
-}
-
-func (c *Chip8) SetKeys() {
-
 }
