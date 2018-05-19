@@ -23,15 +23,14 @@ func run() {
 
 	// Set up render system and register input callbacks
 	setupGraphics()
-	setupInput()
 
 	myChip8 := &chip8.Chip8{}
 
 	// Initialize the Chip8 system and load the game into the memory
 	myChip8.Initialize()
-	err := myChip8.LoadGame("data/pong.rom")
+	err := myChip8.LoadGame("data/pong.ch8")
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	// Emulation loop
 	for !win.Closed() {
@@ -45,22 +44,7 @@ func run() {
 			drawGraphics(myChip8.GetGraphics())
 		}
 
-		// Store key press state (Press and Release)
-		var keyByIndex = []pixelgl.Button{
-			pixelgl.Key1, pixelgl.Key2, pixelgl.Key3, pixelgl.Key4,
-			pixelgl.KeyQ, pixelgl.KeyW, pixelgl.KeyE, pixelgl.KeyR,
-			pixelgl.KeyA, pixelgl.KeyS, pixelgl.KeyD, pixelgl.KeyF,
-			pixelgl.KeyZ, pixelgl.KeyX, pixelgl.KeyC, pixelgl.KeyV,
-		}
-
-		for index, key := range keyByIndex {
-			if win.JustPressed(key) {
-				myChip8.SetKey(byte(index), true)
-			}
-			if win.JustReleased(key) {
-				myChip8.SetKey(byte(index), false)
-			}
-		}
+		handleKeys(myChip8)
 	}
 }
 
@@ -77,8 +61,23 @@ func setupGraphics() {
 	}
 }
 
-func setupInput() {
+func handleKeys(myChip8 *chip8.Chip8) {
+	// Store key press state (Press and Release)
+	var keyByIndex = []pixelgl.Button{
+		pixelgl.Key1, pixelgl.Key2, pixelgl.Key3, pixelgl.Key4,
+		pixelgl.KeyQ, pixelgl.KeyW, pixelgl.KeyE, pixelgl.KeyR,
+		pixelgl.KeyA, pixelgl.KeyS, pixelgl.KeyD, pixelgl.KeyF,
+		pixelgl.KeyZ, pixelgl.KeyX, pixelgl.KeyC, pixelgl.KeyV,
+	}
 
+	for index, key := range keyByIndex {
+		if win.JustPressed(key) {
+			myChip8.SetKey(byte(index), true)
+		}
+		if win.JustReleased(key) {
+			myChip8.SetKey(byte(index), false)
+		}
+	}
 }
 
 func drawGraphics(graphics [64 * 32]byte) {
