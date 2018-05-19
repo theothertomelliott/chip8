@@ -74,10 +74,10 @@ func drawGraphics(graphics [64 * 32]byte) {
 	imd := imdraw.New(nil)
 	imd.Color = pixel.RGB(1, 0, 0)
 	screenWidth := win.Bounds().W()
-	width, height := screenWidth/sizeX, screenWidth/sizeY
+	width, height := screenWidth/sizeX, screenHeight/sizeY
 	for x := 0; x < 64; x++ {
 		for y := 0; y < 32; y++ {
-			if graphics[x*32+y] == 1 {
+			if graphics[y*64+x] == 1 {
 				imd.Push(pixel.V(width*float64(x), height*float64(y)))
 				imd.Push(pixel.V(width*float64(x)+width, height*float64(y)+height))
 				imd.Rectangle(0)

@@ -3,6 +3,7 @@ package chip8
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 )
 
@@ -270,13 +271,13 @@ func (c *Chip8) EmulateCycle() error {
 		c.pc = uint16(c.V[0]) + nnn
 
 	case 0xC000:
-		x := uint16(c.V[(c.opcode&0x0F00)>>8])
+		x := uint16(c.opcode&0x0F00) >> 8
 		nn := c.opcode & 0x00FF
 		fmt.Printf("V%d=rand()&0x%X\n", x, nn)
 		// TODO:
 		// Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+		c.V[x] = byte(rand.Float32()*255) & byte(nn)
 		c.pc += 2
-		return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 
 	case 0xD000:
 		x := uint16(c.V[(c.opcode&0x0F00)>>8])
@@ -316,32 +317,35 @@ func (c *Chip8) EmulateCycle() error {
 			// Skips the next instruction if the key stored in VX isn't pressed.
 			// (Usually the next instruction is a jump to skip a code block)
 			fmt.Printf("if(key()!=V%d)\n", x)
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+			c.pc += 2
 		}
 
 	case 0xF000:
 		x := (c.opcode & 0x0F00) >> 8
 		switch c.opcode & 0x00FF {
 		case 0x0007:
-			// TODO:
+			c.V[x] = c.delayTimer
+			c.pc += 2
 			fmt.Println("Vx = get_delay()")
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x000A:
 			// TODO:
 			fmt.Println("Vx = get_key()")
 			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0015:
-			// TODO:
+			c.delayTimer = c.V[x]
+			c.pc += 2
 			fmt.Println("delay_timer(Vx)")
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+
 		case 0x0018:
-			// TODO:
+			c.soundTimer = c.V[x]
+			c.pc += 2
 			fmt.Println("sound_timer(Vx)")
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+
 		case 0x001E:
-			// TODO:
-			fmt.Println("I +=Vx")
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+			c.I += uint16(c.V[x])
+			c.pc += 2
+			fmt.Println("I += Vx")
+
 		case 0x0029:
 			// Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 			c.I = uint16(c.V[x]) * 5
