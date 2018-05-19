@@ -25,8 +25,11 @@ type Chip8 struct {
 	// 0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
 	// 0x200-0xFFF - Program ROM and work RAM
 
-	// The graphics system: The chip 8 has one instruction that draws sprite to the screen. Drawing is done in XOR mode and if a pixel is turned off as a result of drawing, the VF register is set. This is used for collision detection.
-	// The graphics of the Chip 8 are black and white and the screen has a total of 2048 pixels (64 x 32). This can easily be implemented using an array that hold the pixel state (1 or 0):
+	// The graphics system: The chip 8 has one instruction that draws sprite to the screen.
+	// Drawing is done in XOR mode and if a pixel is turned off as a result of drawing, the VF register is set.
+	// This is used for collision detection.
+	// The graphics of the Chip 8 are black and white and the screen has a total of 2048 pixels (64 x 32).
+	// This can easily be implemented using an array that hold the pixel state (1 or 0):
 	gfx [64 * 32]byte
 
 	// Interupts and hardware registers.
@@ -50,6 +53,9 @@ type Chip8 struct {
 	drawFlag bool
 }
 
+func (c *Chip8) GetGraphics() [64 * 32]byte {
+	return c.gfx
+}
 func (c *Chip8) Initialize() {
 	// Initialize registers and memory once
 	c.pc = 0x200 // Program counter starts at 0x200
@@ -68,7 +74,7 @@ func (c *Chip8) Initialize() {
 
 	// Load fontset
 	for i := 0; i < len(chip8Fontset); i++ {
-		c.memory[i] = chip8Fontset[i]
+		c.memory[0x0A0+i] = chip8Fontset[i]
 	}
 	// Reset timers
 	c.delayTimer = 0
@@ -121,7 +127,7 @@ func (c *Chip8) EmulateCycle() error {
 		case 0x00EE:
 			fmt.Println("return;")
 			c.sp--
-			c.pc = c.stack[c.sp]
+			c.pc = c.stack[c.sp] + 2
 
 		default:
 			return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
@@ -225,17 +231,20 @@ func (c *Chip8) EmulateCycle() error {
 			// Shifts VY right by one and stores the result to VX (VY remains unchanged).
 			// VF is set to the value of the least significant bit of VY before the shift.[2]
 			c.pc += 2
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0007:
 			fmt.Printf("V%d=V%d-V%d\n", x, y, x)
 			// TODO:
 			// Sets VX to VY minus VX. VF is set to 0 when there's a borrow, and 1 when there isn't.
 			c.pc += 2
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x000E:
 			fmt.Printf("V%d=V%d=V%d<<1\n", x, y, y)
 			// TODO:
 			// Shifts VY left by one and copies the result to VX.
 			// VF is set to the value of the most significant bit of VY before the shift.
 			c.pc += 2
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		default:
 			return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		}
@@ -267,6 +276,7 @@ func (c *Chip8) EmulateCycle() error {
 		// TODO:
 		// Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
 		c.pc += 2
+		return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 
 	case 0xD000:
 		x := uint16(c.V[(c.opcode&0x0F00)>>8])
@@ -283,8 +293,8 @@ func (c *Chip8) EmulateCycle() error {
 				if (pixel & (0x80 >> xline)) != 0 {
 					if c.gfx[(x+xline+((y+yline)*64))] == 1 {
 						c.V[0xF] = 1
-						c.gfx[x+xline+((y+yline)*64)] ^= 1
 					}
+					c.gfx[x+xline+((y+yline)*64)] ^= 1
 				}
 			}
 		}
@@ -300,11 +310,13 @@ func (c *Chip8) EmulateCycle() error {
 			// Skips the next instruction if the key stored in VX is pressed.
 			// (Usually the next instruction is a jump to skip a code block)
 			fmt.Printf("if(key()==V%d)\n", x)
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x00A1:
 			// TODO:
 			// Skips the next instruction if the key stored in VX isn't pressed.
 			// (Usually the next instruction is a jump to skip a code block)
 			fmt.Printf("if(key()!=V%d)\n", x)
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		}
 
 	case 0xF000:
@@ -313,18 +325,23 @@ func (c *Chip8) EmulateCycle() error {
 		case 0x0007:
 			// TODO:
 			fmt.Println("Vx = get_delay()")
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x000A:
 			// TODO:
 			fmt.Println("Vx = get_key()")
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0015:
 			// TODO:
 			fmt.Println("delay_timer(Vx)")
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0018:
 			// TODO:
 			fmt.Println("sound_timer(Vx)")
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x001E:
 			// TODO:
 			fmt.Println("I +=Vx")
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0029:
 			// Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 			c.I = uint16(c.V[x]) * 5
@@ -343,6 +360,7 @@ func (c *Chip8) EmulateCycle() error {
 			// TODO:
 			fmt.Println("reg_dump(Vx, &I)")
 			c.pc += 2
+			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		case 0x0065:
 			for i := uint16(0); i <= x; i++ {
 				c.V[i] = c.memory[c.I+i]
@@ -372,7 +390,9 @@ func (c *Chip8) EmulateCycle() error {
 }
 
 func (c *Chip8) DrawFlag() bool {
-	return c.drawFlag
+	flag := c.drawFlag
+	c.drawFlag = false
+	return flag
 }
 
 func (c *Chip8) SetKeys() {
