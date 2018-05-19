@@ -61,8 +61,6 @@ func run() {
 				myChip8.SetKey(byte(index), false)
 			}
 		}
-
-		// TODO: Handle interrupts
 	}
 }
 

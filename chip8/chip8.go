@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"time"
 )
 
 type Chip8 struct {
@@ -52,19 +53,10 @@ type Chip8 struct {
 
 	// True iff the screen must be drawn
 	drawFlag bool
+
+	timerClock *time.Ticker
 }
 
-func (c *Chip8) SetKey(index byte, down bool) {
-	if down {
-		c.key[index] = 1
-	} else {
-		c.key[index] = 0
-	}
-}
-
-func (c *Chip8) GetGraphics() [64 * 32]byte {
-	return c.gfx
-}
 func (c *Chip8) Initialize() {
 	// Initialize registers and memory once
 	c.pc = 0x200 // Program counter starts at 0x200
@@ -88,6 +80,8 @@ func (c *Chip8) Initialize() {
 	// Reset timers
 	c.delayTimer = 0
 	c.soundTimer = 0
+	// Create a ticker at 60Hz
+	c.timerClock = time.NewTicker(time.Second / 60)
 }
 
 func (c *Chip8) LoadGame(filename string) error {
@@ -118,6 +112,17 @@ func (c *Chip8) LoadGame(filename string) error {
 	return nil
 }
 
+func (c *Chip8) SetKey(index byte, down bool) {
+	if down {
+		c.key[index] = 1
+	} else {
+		c.key[index] = 0
+	}
+}
+
+func (c *Chip8) GetGraphics() [64 * 32]byte {
+	return c.gfx
+}
 func (c *Chip8) EmulateCycle() error {
 	// Fetch Opcode
 	c.opcode = uint16(c.memory[c.pc])<<8 | uint16(c.memory[c.pc+1])
@@ -282,8 +287,6 @@ func (c *Chip8) EmulateCycle() error {
 		x := uint16(c.opcode&0x0F00) >> 8
 		nn := c.opcode & 0x00FF
 		fmt.Printf("V%d=rand()&0x%X\n", x, nn)
-		// TODO:
-		// Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
 		c.V[x] = byte(rand.Float32()*255) & byte(nn)
 		c.pc += 2
 
@@ -393,17 +396,25 @@ func (c *Chip8) EmulateCycle() error {
 		return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 	}
 
-	// Update timers
-	if c.delayTimer > 0 {
-		c.delayTimer--
+	select {
+	case <-c.timerClock.C:
+		// Update timers
+		if c.delayTimer > 0 {
+			// TODO: This should be at 60Hz
+			c.delayTimer--
+		}
+
+		if c.soundTimer > 0 {
+			// TODO: This should also be at 60Hz
+			if c.soundTimer == 1 {
+				fmt.Println("BEEP!")
+				c.soundTimer--
+			}
+		}
+	default:
+		// Skip the timers
 	}
 
-	if c.soundTimer > 0 {
-		if c.soundTimer == 1 {
-			fmt.Println("BEEP!")
-			c.soundTimer--
-		}
-	}
 	return nil
 }
 
