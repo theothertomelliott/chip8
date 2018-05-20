@@ -80,34 +80,16 @@ var (
 		pixelgl.KeyA, pixelgl.KeyS, pixelgl.KeyD, pixelgl.KeyF,
 		pixelgl.KeyZ, pixelgl.KeyX, pixelgl.KeyC, pixelgl.KeyV,
 	}
-	keysDown [16]*time.Ticker
 )
 
 func handleKeys(myChip8 *chip8.Chip8) {
 
 	for index, key := range keyByIndex {
-		if win.JustReleased(key) {
-			if keysDown[index] != nil {
-				keysDown[index].Stop()
-				keysDown[index] = nil
-			}
-		} else if win.Pressed(key) {
-			if keysDown[index] == nil {
-				keysDown[index] = time.NewTicker(time.Second / 3)
-			}
+		if win.Pressed(key) {
 			myChip8.SetKey(byte(index), true)
 		}
-
-		if keysDown[index] == nil {
-			continue
-		}
-		select {
-		case <-keysDown[index].C:
-			myChip8.SetKey(byte(index), true)
-		default:
-		}
-
 	}
+
 }
 
 func drawGraphics(graphics [64 * 32]byte) {
