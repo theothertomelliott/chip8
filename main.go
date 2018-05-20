@@ -16,6 +16,7 @@ const (
 	cyclesPerSecond           = 1000
 	sizeX, sizeY              = 64, 32
 	screenWidth, screenHeight = float64(1024), float64(768)
+	keyRepeatDuration         = time.Second / 5
 )
 
 var win *pixelgl.Window
@@ -99,7 +100,7 @@ func handleKeys(myChip8 *chip8.Chip8) {
 			}
 		} else if win.JustPressed(key) {
 			if keysDown[index] == nil {
-				keysDown[index] = time.NewTicker(time.Second / 5)
+				keysDown[index] = time.NewTicker(keyRepeatDuration)
 			}
 			myChip8.SetKey(byte(index), true)
 		}
