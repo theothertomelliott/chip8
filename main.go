@@ -91,7 +91,7 @@ func handleKeys(myChip8 *chip8.Chip8) {
 				keysDown[index].Stop()
 				keysDown[index] = nil
 			}
-		} else if win.JustPressed(key) {
+		} else if win.Pressed(key) {
 			if keysDown[index] == nil {
 				keysDown[index] = time.NewTicker(time.Second / 3)
 			}
