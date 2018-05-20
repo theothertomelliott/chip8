@@ -42,6 +42,10 @@ func run() {
 	}
 	// Emulation loop
 	for !win.Closed() {
+		if win.Pressed(pixelgl.KeyEscape) {
+			return
+		}
+
 		// Emulate one cycle
 		if err := myChip8.EmulateCycle(); err != nil {
 			log.Fatal(err)
@@ -50,6 +54,8 @@ func run() {
 		// If the draw flag is set, update the screen
 		if myChip8.DrawFlag() {
 			drawGraphics(myChip8.GetGraphics())
+		} else {
+			win.UpdateInput()
 		}
 
 		handleKeys(myChip8)
@@ -91,9 +97,9 @@ func handleKeys(myChip8 *chip8.Chip8) {
 				keysDown[index].Stop()
 				keysDown[index] = nil
 			}
-		} else if win.Pressed(key) {
+		} else if win.JustPressed(key) {
 			if keysDown[index] == nil {
-				keysDown[index] = time.NewTicker(time.Second / 3)
+				keysDown[index] = time.NewTicker(time.Second / 5)
 			}
 			myChip8.SetKey(byte(index), true)
 		}
