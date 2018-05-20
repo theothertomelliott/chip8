@@ -84,8 +84,6 @@ func handleKeys(myChip8 *chip8.Chip8) {
 	for index, key := range keyByIndex {
 		if win.JustPressed(key) {
 			myChip8.SetKey(byte(index), true)
-		} else if win.JustReleased(key) {
-			myChip8.SetKey(byte(index), false)
 		}
 	}
 }

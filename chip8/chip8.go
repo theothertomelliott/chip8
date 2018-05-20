@@ -325,6 +325,7 @@ func (c *Chip8) EmulateCycle() error {
 			log.Printf("if(key()==V%d)\n", x)
 			if c.key[c.V[x]] != 0 {
 				c.pc += 4
+				c.key[c.V[x]] = 0
 			} else {
 				c.pc += 2
 			}
@@ -333,6 +334,7 @@ func (c *Chip8) EmulateCycle() error {
 			if c.key[c.V[x]] == 0 {
 				c.pc += 4
 			} else {
+				c.key[c.V[x]] = 0
 				c.pc += 2
 			}
 		}
@@ -352,6 +354,7 @@ func (c *Chip8) EmulateCycle() error {
 					break
 				}
 			}
+			c.key[c.V[x]] = 0
 			log.Println("Vx = get_key()")
 		case 0x0015:
 			c.delayTimer = c.V[x]
