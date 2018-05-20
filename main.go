@@ -72,19 +72,41 @@ func setupGraphics() {
 	}
 }
 
-func handleKeys(myChip8 *chip8.Chip8) {
-	// Store key press state (Press and Release)
-	var keyByIndex = []pixelgl.Button{
+// Store key press state (Press and Release)
+var (
+	keyByIndex = []pixelgl.Button{
 		pixelgl.Key1, pixelgl.Key2, pixelgl.Key3, pixelgl.Key4,
 		pixelgl.KeyQ, pixelgl.KeyW, pixelgl.KeyE, pixelgl.KeyR,
 		pixelgl.KeyA, pixelgl.KeyS, pixelgl.KeyD, pixelgl.KeyF,
 		pixelgl.KeyZ, pixelgl.KeyX, pixelgl.KeyC, pixelgl.KeyV,
 	}
+	keysDown [16]*time.Ticker
+)
+
+func handleKeys(myChip8 *chip8.Chip8) {
 
 	for index, key := range keyByIndex {
-		if win.JustPressed(key) {
+		if win.JustReleased(key) {
+			if keysDown[index] != nil {
+				keysDown[index].Stop()
+				keysDown[index] = nil
+			}
+		} else if win.JustPressed(key) {
+			if keysDown[index] == nil {
+				keysDown[index] = time.NewTicker(time.Second / 3)
+			}
 			myChip8.SetKey(byte(index), true)
 		}
+
+		if keysDown[index] == nil {
+			continue
+		}
+		select {
+		case <-keysDown[index].C:
+			myChip8.SetKey(byte(index), true)
+		default:
+		}
+
 	}
 }
 
