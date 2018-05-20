@@ -259,8 +259,6 @@ func (c *Chip8) EmulateCycle() error {
 			c.V[x] = c.V[y] << 1
 			c.V[0xF] = c.V[y] & 0x80
 			c.pc += 2
-			c.pc += 2
-			return fmt.Errorf("unimplemented opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		default:
 			return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		}

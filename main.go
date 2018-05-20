@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/faiface/pixel"
@@ -11,8 +12,11 @@ import (
 	"golang.org/x/image/colornames"
 )
 
-const sizeX, sizeY = 64, 32
-const screenWidth, screenHeight = float64(1024), float64(768)
+const (
+	cyclesPerSecond           = 1000
+	sizeX, sizeY              = 64, 32
+	screenWidth, screenHeight = float64(1024), float64(768)
+)
 
 var win *pixelgl.Window
 
@@ -22,6 +26,9 @@ func main() {
 
 func run() {
 
+	ticker := time.NewTicker(time.Second / cyclesPerSecond)
+	defer ticker.Stop()
+
 	// Set up render system and register input callbacks
 	setupGraphics()
 
@@ -29,7 +36,7 @@ func run() {
 
 	// Initialize the Chip8 system and load the game into the memory
 	myChip8.Initialize()
-	err := myChip8.LoadGame("data/pong.ch8")
+	err := myChip8.LoadGame(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,7 +54,8 @@ func run() {
 
 		handleKeys(myChip8)
 
-		time.Sleep(time.Second / 300)
+		// Wait for the next tick
+		<-ticker.C
 	}
 }
 
