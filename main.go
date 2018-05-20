@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	cyclesPerSecond           = 1000
+	cyclesPerSecond           = 300
 	sizeX, sizeY              = 64, 32
 	screenWidth, screenHeight = float64(1024), float64(768)
 	keyRepeatDuration         = time.Second / 5
@@ -45,6 +45,9 @@ func run() {
 	for !win.Closed() {
 		if win.Pressed(pixelgl.KeyEscape) {
 			return
+		}
+		if win.Pressed(pixelgl.KeyL) {
+			myChip8.ToggleLogging(true)
 		}
 
 		// Emulate one cycle

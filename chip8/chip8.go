@@ -56,6 +56,33 @@ type Chip8 struct {
 	drawFlag bool
 
 	timerClock *time.Ticker
+
+	log Logging
+}
+
+type logger interface {
+	Printf(format string, v ...interface{})
+	Println(v ...interface{})
+}
+
+type LoggerWithToggle struct {
+	Enabled bool
+}
+
+func (l *LoggerWithToggle) Printf(format string, v ...interface{}) {
+	if l.Enabled {
+		log.Printf(format, v...)
+	}
+}
+
+func (l *LoggerWithToggle) Println(v ...interface{}) {
+	if l.Enabled {
+		log.Println(v...)
+	}
+}
+
+type Logging struct {
+	Opcodes *LoggerWithToggle
 }
 
 func (c *Chip8) Initialize() {
@@ -83,6 +110,16 @@ func (c *Chip8) Initialize() {
 	c.soundTimer = 0
 	// Create a ticker at 60Hz
 	c.timerClock = time.NewTicker(time.Second / 60)
+
+	c.log.Opcodes = &LoggerWithToggle{
+		Enabled: false,
+	}
+}
+
+func (c *Chip8) ToggleLogging(opcodes bool) {
+	if opcodes {
+		c.log.Opcodes.Enabled = !c.log.Opcodes.Enabled
+	}
 }
 
 func (c *Chip8) LoadGame(filename string) error {
@@ -97,7 +134,7 @@ func (c *Chip8) LoadGame(filename string) error {
 		return statsErr
 	}
 
-	var size int64 = stats.Size()
+	var size = stats.Size()
 	bytes := make([]byte, size)
 
 	bufr := bufio.NewReader(file)
@@ -135,12 +172,12 @@ func (c *Chip8) EmulateCycle() error {
 	case 0x0000:
 		switch c.opcode & 0x00FF {
 		case 0x00E0:
-			log.Println("disp_clear()")
+			c.log.Opcodes.Println("disp_clear()")
 			// Clear display
 			c.gfx = [64 * 32]byte{}
 			c.pc += 2
 		case 0x00EE:
-			log.Println("return;")
+			c.log.Opcodes.Println("return;")
 			c.sp--
 			c.pc = c.stack[c.sp] + 2
 
@@ -150,13 +187,13 @@ func (c *Chip8) EmulateCycle() error {
 
 	case 0x1000:
 		c.pc = c.opcode & 0x0FFF
-		log.Printf("goto 0x%X;", c.pc)
+		c.log.Opcodes.Printf("goto 0x%X;", c.pc)
 
 	case 0x2000:
 		c.stack[c.sp] = c.pc
 		c.sp++
 		c.pc = c.opcode & 0x0FFF
-		log.Printf("*(0x%X)()\n", c.pc)
+		c.log.Opcodes.Printf("*(0x%X)()\n", c.pc)
 
 	case 0x3000:
 		x := (c.opcode & 0x0F00) >> 8
@@ -166,7 +203,7 @@ func (c *Chip8) EmulateCycle() error {
 		} else {
 			c.pc += 2
 		}
-		log.Printf("if(V%d==0x%X)\n", x, nn)
+		c.log.Opcodes.Printf("if(V%d==0x%X)\n", x, nn)
 
 	case 0x4000:
 		x := (c.opcode & 0x0F00) >> 8
@@ -176,7 +213,7 @@ func (c *Chip8) EmulateCycle() error {
 		} else {
 			c.pc += 2
 		}
-		log.Printf("if(V%d!=0x%X)\n", x, nn)
+		c.log.Opcodes.Printf("if(V%d!=0x%X)\n", x, nn)
 
 	case 0x5000:
 		x := (c.opcode & 0x0F00) >> 8
@@ -186,19 +223,19 @@ func (c *Chip8) EmulateCycle() error {
 		} else {
 			c.pc += 2
 		}
-		log.Printf("if(V%d==V%d)\n", x, y)
+		c.log.Opcodes.Printf("if(V%d==V%d)\n", x, y)
 
 	case 0x6000:
 		x := (c.opcode & 0x0F00) >> 8
 		nn := byte(c.opcode & 0x00FF)
-		log.Printf("V%d = 0x%X\n", x, nn)
+		c.log.Opcodes.Printf("V%d = 0x%X\n", x, nn)
 		c.V[x] = nn
 		c.pc += 2
 
 	case 0x7000:
 		x := (c.opcode & 0x0F00) >> 8
 		nn := byte(c.opcode & 0x00FF)
-		log.Printf("V%d += 0x%X\n", x, nn)
+		c.log.Opcodes.Printf("V%d += 0x%X\n", x, nn)
 		c.V[x] += nn
 		c.pc += 2
 
@@ -207,23 +244,23 @@ func (c *Chip8) EmulateCycle() error {
 		y := (c.opcode & 0x00F0) >> 4
 		switch c.opcode & 0x000F {
 		case 0x0000:
-			log.Printf("V%d = V%d\n", x, y)
+			c.log.Opcodes.Printf("V%d = V%d\n", x, y)
 			c.V[x] = c.V[y]
 			c.pc += 2
 		case 0x0001:
-			log.Printf("V%d |= V%d\n", x, y)
+			c.log.Opcodes.Printf("V%d |= V%d\n", x, y)
 			c.V[x] |= c.V[y]
 			c.pc += 2
 		case 0x0002:
-			log.Printf("V%d &= V%d\n", x, y)
+			c.log.Opcodes.Printf("V%d &= V%d\n", x, y)
 			c.V[x] &= c.V[y]
 			c.pc += 2
 		case 0x0003:
-			log.Printf("V%d ^= V%d\n", x, y)
+			c.log.Opcodes.Printf("V%d ^= V%d\n", x, y)
 			c.V[x] ^= c.V[y]
 			c.pc += 2
 		case 0x0004:
-			log.Printf("V%d += V%d\n", x, y)
+			c.log.Opcodes.Printf("V%d += V%d\n", x, y)
 			if c.V[y] > (0xFF - c.V[x]) {
 				c.V[0xF] = 1 //carry
 			} else {
@@ -232,7 +269,7 @@ func (c *Chip8) EmulateCycle() error {
 			c.V[x] += c.V[y]
 			c.pc += 2
 		case 0x0005:
-			log.Printf("V%d -= V%d\n", x, y)
+			c.log.Opcodes.Printf("V%d -= V%d\n", x, y)
 			if c.V[y] > c.V[x] {
 				c.V[0xF] = 0 //borrow
 			} else {
@@ -241,12 +278,12 @@ func (c *Chip8) EmulateCycle() error {
 			c.V[x] -= c.V[y]
 			c.pc += 2
 		case 0x0006:
-			log.Printf("V%d=V%d=V%d>>1\n", x, y, y)
+			c.log.Opcodes.Printf("V%d=V%d=V%d>>1\n", x, y, y)
 			c.V[x] = c.V[y] >> 1
 			c.V[0xF] = c.V[y] & 0x01
 			c.pc += 2
 		case 0x0007:
-			log.Printf("V%d=V%d-V%d\n", x, y, x)
+			c.log.Opcodes.Printf("V%d=V%d-V%d\n", x, y, x)
 			if c.V[x] > c.V[y] {
 				c.V[0xF] = 0 //borrow
 			} else {
@@ -255,7 +292,7 @@ func (c *Chip8) EmulateCycle() error {
 			c.V[x] = c.V[y] - c.V[x]
 			c.pc += 2
 		case 0x000E:
-			log.Printf("V%d=V%d=V%d<<1\n", x, y, y)
+			c.log.Opcodes.Printf("V%d=V%d=V%d<<1\n", x, y, y)
 			c.V[x] = c.V[y] << 1
 			c.V[0xF] = c.V[y] & 0x80
 			c.pc += 2
@@ -271,22 +308,22 @@ func (c *Chip8) EmulateCycle() error {
 		} else {
 			c.pc += 2
 		}
-		log.Printf("if(V%d!=V%d)\n", x, y)
+		c.log.Opcodes.Printf("if(V%d!=V%d)\n", x, y)
 
 	case 0xA000: // ANNN: Sets I to the address NNN
 		c.I = c.opcode & 0x0FFF
-		log.Printf("I = 0x%X\n", c.I)
+		c.log.Opcodes.Printf("I = 0x%X\n", c.I)
 		c.pc += 2
 
 	case 0xB000:
 		nnn := c.opcode & 0x0FFF
-		log.Printf("PC=V0+0x%X\n", nnn)
+		c.log.Opcodes.Printf("PC=V0+0x%X\n", nnn)
 		c.pc = uint16(c.V[0]) + nnn
 
 	case 0xC000:
 		x := uint16(c.opcode&0x0F00) >> 8
 		nn := c.opcode & 0x00FF
-		log.Printf("V%d=rand()&0x%X\n", x, nn)
+		c.log.Opcodes.Printf("V%d=rand()&0x%X\n", x, nn)
 		c.V[x] = byte(rand.Float32()*255) & byte(nn)
 		c.pc += 2
 
@@ -296,7 +333,7 @@ func (c *Chip8) EmulateCycle() error {
 		height := c.opcode & 0x000F
 		var pixel uint16
 
-		log.Printf("draw(V%d,V%d,%d)\n", x, y, height)
+		c.log.Opcodes.Printf("draw(V%d,V%d,%d)\n", x, y, height)
 
 		c.V[0xF] = 0
 		for yline := uint16(0); yline < height; yline++ {
@@ -322,7 +359,7 @@ func (c *Chip8) EmulateCycle() error {
 		x := (c.opcode & 0x0F00) >> 8
 		switch c.opcode & 0x00FF {
 		case 0x009E:
-			log.Printf("if(key()==V%d)\n", x)
+			c.log.Opcodes.Printf("if(key()==V%d)\n", x)
 			if c.key[c.V[x]] != 0 {
 				c.pc += 4
 				c.key[c.V[x]] = 0
@@ -330,7 +367,7 @@ func (c *Chip8) EmulateCycle() error {
 				c.pc += 2
 			}
 		case 0x00A1:
-			log.Printf("if(key()!=V%d)\n", x)
+			c.log.Opcodes.Printf("if(key()!=V%d)\n", x)
 			if c.key[c.V[x]] == 0 {
 				c.pc += 4
 			} else {
@@ -345,7 +382,7 @@ func (c *Chip8) EmulateCycle() error {
 		case 0x0007:
 			c.V[x] = c.delayTimer
 			c.pc += 2
-			log.Println("Vx = get_delay()")
+			c.log.Opcodes.Println("Vx = get_delay()")
 		case 0x000A:
 			for index, k := range c.key {
 				if k != 0 {
@@ -355,48 +392,48 @@ func (c *Chip8) EmulateCycle() error {
 				}
 			}
 			c.key[c.V[x]] = 0
-			log.Println("Vx = get_key()")
+			c.log.Opcodes.Println("Vx = get_key()")
 		case 0x0015:
 			c.delayTimer = c.V[x]
 			c.pc += 2
-			log.Println("delay_timer(Vx)")
+			c.log.Opcodes.Println("delay_timer(Vx)")
 
 		case 0x0018:
 			c.soundTimer = c.V[x]
 			c.pc += 2
-			log.Println("sound_timer(Vx)")
+			c.log.Opcodes.Println("sound_timer(Vx)")
 
 		case 0x001E:
 			c.I += uint16(c.V[x])
 			c.pc += 2
-			log.Println("I += Vx")
+			c.log.Opcodes.Println("I += Vx")
 
 		case 0x0029:
 			// Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 			c.I = uint16(c.V[x]) * 5
 			c.pc += 2
-			log.Printf("I=sprite_addr[V%d]\n", x)
+			c.log.Opcodes.Printf("I=sprite_addr[V%d]\n", x)
 		case 0x0033:
 			c.memory[c.I] = c.V[x] / 100
 			c.memory[c.I+1] = (c.V[x] / 10) % 10
 			c.memory[c.I+2] = (c.V[x] % 100) % 10
 			c.pc += 2
-			log.Printf("set_BCD(Vx);\n")
-			log.Printf("*(I + 0) = BCD(3)\n")
-			log.Printf("*(I + 1) = BCD(2)\n")
-			log.Printf("*(I + 2) = BCD(1)\n")
+			c.log.Opcodes.Printf("set_BCD(Vx);\n")
+			c.log.Opcodes.Printf("*(I + 0) = BCD(3)\n")
+			c.log.Opcodes.Printf("*(I + 1) = BCD(2)\n")
+			c.log.Opcodes.Printf("*(I + 2) = BCD(1)\n")
 		case 0x0055:
 			for i := uint16(0); i <= x; i++ {
 				c.memory[c.I+i] = c.V[i]
 			}
-			log.Println("reg_dump(Vx, &I)")
+			c.log.Opcodes.Println("reg_dump(Vx, &I)")
 			c.pc += 2
 		case 0x0065:
 			for i := uint16(0); i <= x; i++ {
 				c.V[i] = c.memory[c.I+i]
 			}
 			c.pc += 2
-			log.Printf("reg_load(V%d,&I)", x)
+			c.log.Opcodes.Printf("reg_load(V%d,&I)", x)
 		default:
 			return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
 		}
@@ -414,7 +451,7 @@ func (c *Chip8) EmulateCycle() error {
 
 		if c.soundTimer > 0 {
 			if c.soundTimer == 1 {
-				log.Println("BEEP!")
+				c.log.Opcodes.Println("BEEP!")
 				c.soundTimer--
 			}
 		}
