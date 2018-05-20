@@ -3,7 +3,6 @@ package chip8
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"math/rand"
 	"os"
 	"time"
@@ -57,32 +56,7 @@ type Chip8 struct {
 
 	timerClock *time.Ticker
 
-	log Logging
-}
-
-type logger interface {
-	Printf(format string, v ...interface{})
-	Println(v ...interface{})
-}
-
-type LoggerWithToggle struct {
-	Enabled bool
-}
-
-func (l *LoggerWithToggle) Printf(format string, v ...interface{}) {
-	if l.Enabled {
-		log.Printf(format, v...)
-	}
-}
-
-func (l *LoggerWithToggle) Println(v ...interface{}) {
-	if l.Enabled {
-		log.Println(v...)
-	}
-}
-
-type Logging struct {
-	Opcodes *LoggerWithToggle
+	log logging
 }
 
 func (c *Chip8) Initialize() {
@@ -111,7 +85,7 @@ func (c *Chip8) Initialize() {
 	// Create a ticker at 60Hz
 	c.timerClock = time.NewTicker(time.Second / 60)
 
-	c.log.Opcodes = &LoggerWithToggle{
+	c.log.Opcodes = &loggerWithToggle{
 		Enabled: false,
 	}
 }
