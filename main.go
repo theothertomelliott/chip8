@@ -33,15 +33,20 @@ func run() {
 	// Set up render system and register input callbacks
 	setupGraphics()
 
-	myChip8 := &chip8.Chip8{}
-
-	// Initialize the Chip8 system and load the game into the memory
-	myChip8.Initialize()
-	err := myChip8.LoadGame(os.Args[1])
+	// Open the ROM specified as argument ready to load
+	file, err := os.Open(os.Args[1])
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Create a CHIP-8 machine and load the ROM file
+	myChip8, err := chip8.New(file)
+	_ = file.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Should trace logging be output?
 	var trace bool
 
 	// Emulation loop
@@ -113,7 +118,7 @@ func handleKeys(myChip8 *chip8.Chip8) {
 			if keysDown[index] == nil {
 				keysDown[index] = time.NewTicker(keyRepeatDuration)
 			}
-			myChip8.SetKey(byte(index), true)
+			myChip8.SetKeyDown(byte(index))
 		}
 
 		if keysDown[index] == nil {
@@ -121,7 +126,7 @@ func handleKeys(myChip8 *chip8.Chip8) {
 		}
 		select {
 		case <-keysDown[index].C:
-			myChip8.SetKey(byte(index), true)
+			myChip8.SetKeyDown(byte(index))
 		default:
 		}
 

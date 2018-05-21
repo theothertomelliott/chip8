@@ -1,13 +1,15 @@
 package chip8
 
 import (
-	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
-	"os"
 	"time"
 )
 
+// Chip8 emulates a CHIP-8 machine.
+// An initialized instance can be created with New()
 type Chip8 struct {
 	opcode uint16
 
@@ -76,7 +78,16 @@ type ResultState struct {
 	V  [16]byte
 }
 
-func (c *Chip8) Initialize() {
+// New creates a new CHIP-8 machine in a starting condition.
+// Empty registers, stack and display, zeroed timers and
+// memory populated with font data and the contents of a ROM
+// provided in an io.Reader.
+//
+// The Chip8 instance returned will be ready to start processing
+// opcodes with calls to ExecuteCycle.
+func New(rom io.Reader) (*Chip8, error) {
+	c := &Chip8{}
+
 	// Set up opcode mapping
 	c.registerOpcodeHandlers()
 
@@ -102,26 +113,21 @@ func (c *Chip8) Initialize() {
 	// Reset timers
 	c.delayTimer = 0
 	c.soundTimer = 0
+
 	// Create a ticker at 60Hz
 	c.timerClock = time.NewTicker(time.Second / 60)
-}
-func (c *Chip8) LoadGame(filename string) error {
-	file, err := os.Open(filename)
+
+	err := c.loadROM(rom)
 	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	stats, statsErr := file.Stat()
-	if statsErr != nil {
-		return statsErr
+		return nil, err
 	}
 
-	var size = stats.Size()
-	bytes := make([]byte, size)
+	return c, nil
+}
 
-	bufr := bufio.NewReader(file)
-	_, err = bufr.Read(bytes)
+// loadROM loads a ROM into memory from an io.Reader
+func (c *Chip8) loadROM(rom io.Reader) error {
+	bytes, err := ioutil.ReadAll(rom)
 	if err != nil {
 		return err
 	}
@@ -133,23 +139,17 @@ func (c *Chip8) LoadGame(filename string) error {
 	return nil
 }
 
-func (c *Chip8) SetKey(index byte, down bool) {
-	if down {
-		c.key[index] = 1
-	} else {
-		c.key[index] = 0
-	}
+// SetKeyDown will mark the specified key as down.
+// Once read by the current program, the key state will be reset to up.
+func (c *Chip8) SetKeyDown(index byte) {
+	c.key[index] = 1
 }
 
+// GetGraphics returns the current state of the graphics memory.
+// Graphics are 64x32. Each pixel is represented as a byte, 0 = off,
+// !0 = on.
 func (c *Chip8) GetGraphics() [64 * 32]byte {
 	return c.gfx
-}
-
-func (c *Chip8) currentState() ResultState {
-	return ResultState{
-		PC: c.pc,
-		V:  c.V,
-	}
 }
 
 // EmulateCycle will execute a single clock cycle on this CHIP-8 cpu.
@@ -199,8 +199,20 @@ func (c *Chip8) EmulateCycle() (Result, error) {
 
 	return result, nil
 }
+
+// DrawFlag returns the current state of the draw flag.
+// Iff true, the screen will need to be re-drawn using the values in
+// GetGraphics.
+// Reading the flag will reset it to false.
 func (c *Chip8) DrawFlag() bool {
 	flag := c.drawFlag
 	c.drawFlag = false
 	return flag
+}
+
+func (c *Chip8) currentState() ResultState {
+	return ResultState{
+		PC: c.pc,
+		V:  c.V,
+	}
 }
