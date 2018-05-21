@@ -41,18 +41,26 @@ func run() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	var trace bool
+
 	// Emulation loop
 	for !win.Closed() {
 		if win.Pressed(pixelgl.KeyEscape) {
 			return
 		}
-		if win.Pressed(pixelgl.KeyL) {
-			myChip8.ToggleLogging(true)
+		// Toggle operation tracing
+		if win.Pressed(pixelgl.KeyT) {
+			trace = !trace
 		}
 
 		// Emulate one cycle
-		if err := myChip8.EmulateCycle(); err != nil {
+		result, err := myChip8.EmulateCycle()
+		if err != nil {
 			log.Fatal(err)
+		}
+		if trace {
+			log.Println(result.Pseudo)
 		}
 
 		// If the draw flag is set, update the screen

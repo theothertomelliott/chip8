@@ -3,7 +3,7 @@ package chip8
 import (
 	"bufio"
 	"fmt"
-	"math/rand"
+	"log"
 	"os"
 	"time"
 )
@@ -56,10 +56,13 @@ type Chip8 struct {
 
 	timerClock *time.Ticker
 
-	log logging
+	opcodes map[uint16]opcodeHandler
 }
 
 func (c *Chip8) Initialize() {
+	// Set up opcode mapping
+	c.registerOpcodeHandlers()
+
 	// Initialize registers and memory once
 	c.pc = 0x200 // Program counter starts at 0x200
 	c.opcode = 0 // Reset current opcode
@@ -84,18 +87,7 @@ func (c *Chip8) Initialize() {
 	c.soundTimer = 0
 	// Create a ticker at 60Hz
 	c.timerClock = time.NewTicker(time.Second / 60)
-
-	c.log.Opcodes = &loggerWithToggle{
-		Enabled: false,
-	}
 }
-
-func (c *Chip8) ToggleLogging(opcodes bool) {
-	if opcodes {
-		c.log.Opcodes.Enabled = !c.log.Opcodes.Enabled
-	}
-}
-
 func (c *Chip8) LoadGame(filename string) error {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -135,285 +127,19 @@ func (c *Chip8) SetKey(index byte, down bool) {
 func (c *Chip8) GetGraphics() [64 * 32]byte {
 	return c.gfx
 }
-func (c *Chip8) EmulateCycle() error {
+func (c *Chip8) EmulateCycle() (Result, error) {
 	// Fetch Opcode
 	c.opcode = uint16(c.memory[c.pc])<<8 | uint16(c.memory[c.pc+1])
 
-	// Decode opcode
-	switch c.opcode & 0xF000 {
-	// Some opcodes //
+	// Decode and Handle Opcode
+	handler, ok := c.opcodes[c.opcode&0xF000]
+	if !ok {
+		return Result{}, fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+	}
 
-	case 0x0000:
-		switch c.opcode & 0x00FF {
-		case 0x00E0:
-			c.log.Opcodes.Println("disp_clear()")
-			// Clear display
-			c.gfx = [64 * 32]byte{}
-			c.pc += 2
-		case 0x00EE:
-			c.log.Opcodes.Println("return;")
-			c.sp--
-			c.pc = c.stack[c.sp] + 2
-
-		default:
-			return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
-		}
-
-	case 0x1000:
-		c.pc = c.opcode & 0x0FFF
-		c.log.Opcodes.Printf("goto 0x%X;", c.pc)
-
-	case 0x2000:
-		c.stack[c.sp] = c.pc
-		c.sp++
-		c.pc = c.opcode & 0x0FFF
-		c.log.Opcodes.Printf("*(0x%X)()\n", c.pc)
-
-	case 0x3000:
-		x := (c.opcode & 0x0F00) >> 8
-		nn := byte(c.opcode & 0x00FF)
-		if c.V[x] == nn {
-			c.pc += 4
-		} else {
-			c.pc += 2
-		}
-		c.log.Opcodes.Printf("if(V%d==0x%X)\n", x, nn)
-
-	case 0x4000:
-		x := (c.opcode & 0x0F00) >> 8
-		nn := byte(c.opcode & 0x00FF)
-		if c.V[x] != nn {
-			c.pc += 4
-		} else {
-			c.pc += 2
-		}
-		c.log.Opcodes.Printf("if(V%d!=0x%X)\n", x, nn)
-
-	case 0x5000:
-		x := (c.opcode & 0x0F00) >> 8
-		y := (c.opcode & 0x00F0) >> 4
-		if c.V[x] == c.V[y] {
-			c.pc += 4
-		} else {
-			c.pc += 2
-		}
-		c.log.Opcodes.Printf("if(V%d==V%d)\n", x, y)
-
-	case 0x6000:
-		x := (c.opcode & 0x0F00) >> 8
-		nn := byte(c.opcode & 0x00FF)
-		c.log.Opcodes.Printf("V%d = 0x%X\n", x, nn)
-		c.V[x] = nn
-		c.pc += 2
-
-	case 0x7000:
-		x := (c.opcode & 0x0F00) >> 8
-		nn := byte(c.opcode & 0x00FF)
-		c.log.Opcodes.Printf("V%d += 0x%X\n", x, nn)
-		c.V[x] += nn
-		c.pc += 2
-
-	case 0x8000:
-		x := (c.opcode & 0x0F00) >> 8
-		y := (c.opcode & 0x00F0) >> 4
-		switch c.opcode & 0x000F {
-		case 0x0000:
-			c.log.Opcodes.Printf("V%d = V%d\n", x, y)
-			c.V[x] = c.V[y]
-			c.pc += 2
-		case 0x0001:
-			c.log.Opcodes.Printf("V%d |= V%d\n", x, y)
-			c.V[x] |= c.V[y]
-			c.pc += 2
-		case 0x0002:
-			c.log.Opcodes.Printf("V%d &= V%d\n", x, y)
-			c.V[x] &= c.V[y]
-			c.pc += 2
-		case 0x0003:
-			c.log.Opcodes.Printf("V%d ^= V%d\n", x, y)
-			c.V[x] ^= c.V[y]
-			c.pc += 2
-		case 0x0004:
-			c.log.Opcodes.Printf("V%d += V%d\n", x, y)
-			if c.V[y] > (0xFF - c.V[x]) {
-				c.V[0xF] = 1 //carry
-			} else {
-				c.V[0xF] = 0
-			}
-			c.V[x] += c.V[y]
-			c.pc += 2
-		case 0x0005:
-			c.log.Opcodes.Printf("V%d -= V%d\n", x, y)
-			if c.V[y] > c.V[x] {
-				c.V[0xF] = 0 //borrow
-			} else {
-				c.V[0xF] = 1
-			}
-			c.V[x] -= c.V[y]
-			c.pc += 2
-		case 0x0006:
-			c.log.Opcodes.Printf("V%d=V%d=V%d>>1\n", x, y, y)
-			c.V[x] = c.V[y] >> 1
-			c.V[0xF] = c.V[y] & 0x01
-			c.pc += 2
-		case 0x0007:
-			c.log.Opcodes.Printf("V%d=V%d-V%d\n", x, y, x)
-			if c.V[x] > c.V[y] {
-				c.V[0xF] = 0 //borrow
-			} else {
-				c.V[0xF] = 1
-			}
-			c.V[x] = c.V[y] - c.V[x]
-			c.pc += 2
-		case 0x000E:
-			c.log.Opcodes.Printf("V%d=V%d=V%d<<1\n", x, y, y)
-			c.V[x] = c.V[y] << 1
-			c.V[0xF] = c.V[y] & 0x80
-			c.pc += 2
-		default:
-			return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
-		}
-
-	case 0x9000:
-		x := (c.opcode & 0x0F00) >> 8
-		y := (c.opcode & 0x00F0) >> 4
-		if c.V[x] != c.V[y] {
-			c.pc += 4
-		} else {
-			c.pc += 2
-		}
-		c.log.Opcodes.Printf("if(V%d!=V%d)\n", x, y)
-
-	case 0xA000: // ANNN: Sets I to the address NNN
-		c.I = c.opcode & 0x0FFF
-		c.log.Opcodes.Printf("I = 0x%X\n", c.I)
-		c.pc += 2
-
-	case 0xB000:
-		nnn := c.opcode & 0x0FFF
-		c.log.Opcodes.Printf("PC=V0+0x%X\n", nnn)
-		c.pc = uint16(c.V[0]) + nnn
-
-	case 0xC000:
-		x := uint16(c.opcode&0x0F00) >> 8
-		nn := c.opcode & 0x00FF
-		c.log.Opcodes.Printf("V%d=rand()&0x%X\n", x, nn)
-		c.V[x] = byte(rand.Float32()*255) & byte(nn)
-		c.pc += 2
-
-	case 0xD000:
-		x := uint16(c.V[(c.opcode&0x0F00)>>8])
-		y := uint16(c.V[(c.opcode&0x00F0)>>4])
-		height := c.opcode & 0x000F
-		var pixel uint16
-
-		c.log.Opcodes.Printf("draw(V%d,V%d,%d)\n", x, y, height)
-
-		c.V[0xF] = 0
-		for yline := uint16(0); yline < height; yline++ {
-			pixel = uint16(c.memory[c.I+yline])
-			for xline := uint16(0); xline < 8; xline++ {
-				index := (x + xline + ((y + yline) * 64))
-				if index > uint16(len(c.gfx)) {
-					continue
-				}
-				if (pixel & (0x80 >> xline)) != 0 {
-					if c.gfx[index] == 1 {
-						c.V[0xF] = 1
-					}
-					c.gfx[index] ^= 1
-				}
-			}
-		}
-
-		c.drawFlag = true
-		c.pc += 2
-
-	case 0xE000:
-		x := (c.opcode & 0x0F00) >> 8
-		switch c.opcode & 0x00FF {
-		case 0x009E:
-			c.log.Opcodes.Printf("if(key()==V%d)\n", x)
-			if c.key[c.V[x]] != 0 {
-				c.pc += 4
-				c.key[c.V[x]] = 0
-			} else {
-				c.pc += 2
-			}
-		case 0x00A1:
-			c.log.Opcodes.Printf("if(key()!=V%d)\n", x)
-			if c.key[c.V[x]] == 0 {
-				c.pc += 4
-			} else {
-				c.key[c.V[x]] = 0
-				c.pc += 2
-			}
-		}
-
-	case 0xF000:
-		x := (c.opcode & 0x0F00) >> 8
-		switch c.opcode & 0x00FF {
-		case 0x0007:
-			c.V[x] = c.delayTimer
-			c.pc += 2
-			c.log.Opcodes.Println("Vx = get_delay()")
-		case 0x000A:
-			for index, k := range c.key {
-				if k != 0 {
-					c.V[x] = byte(index)
-					c.pc += 2
-					break
-				}
-			}
-			c.key[c.V[x]] = 0
-			c.log.Opcodes.Println("Vx = get_key()")
-		case 0x0015:
-			c.delayTimer = c.V[x]
-			c.pc += 2
-			c.log.Opcodes.Println("delay_timer(Vx)")
-
-		case 0x0018:
-			c.soundTimer = c.V[x]
-			c.pc += 2
-			c.log.Opcodes.Println("sound_timer(Vx)")
-
-		case 0x001E:
-			c.I += uint16(c.V[x])
-			c.pc += 2
-			c.log.Opcodes.Println("I += Vx")
-
-		case 0x0029:
-			// Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
-			c.I = uint16(c.V[x]) * 5
-			c.pc += 2
-			c.log.Opcodes.Printf("I=sprite_addr[V%d]\n", x)
-		case 0x0033:
-			c.memory[c.I] = c.V[x] / 100
-			c.memory[c.I+1] = (c.V[x] / 10) % 10
-			c.memory[c.I+2] = (c.V[x] % 100) % 10
-			c.pc += 2
-			c.log.Opcodes.Printf("set_BCD(Vx);\n")
-			c.log.Opcodes.Printf("*(I + 0) = BCD(3)\n")
-			c.log.Opcodes.Printf("*(I + 1) = BCD(2)\n")
-			c.log.Opcodes.Printf("*(I + 2) = BCD(1)\n")
-		case 0x0055:
-			for i := uint16(0); i <= x; i++ {
-				c.memory[c.I+i] = c.V[i]
-			}
-			c.log.Opcodes.Println("reg_dump(Vx, &I)")
-			c.pc += 2
-		case 0x0065:
-			for i := uint16(0); i <= x; i++ {
-				c.V[i] = c.memory[c.I+i]
-			}
-			c.pc += 2
-			c.log.Opcodes.Printf("reg_load(V%d,&I)", x)
-		default:
-			return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
-		}
-
-	default:
-		return fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+	result, err := handler(c.opcode)
+	if err != nil {
+		return result, err
 	}
 
 	select {
@@ -425,7 +151,7 @@ func (c *Chip8) EmulateCycle() error {
 
 		if c.soundTimer > 0 {
 			if c.soundTimer == 1 {
-				c.log.Opcodes.Println("BEEP!")
+				log.Println("BEEP!")
 				c.soundTimer--
 			}
 		}
@@ -433,9 +159,8 @@ func (c *Chip8) EmulateCycle() error {
 		// Skip the timers
 	}
 
-	return nil
+	return result, nil
 }
-
 func (c *Chip8) DrawFlag() bool {
 	flag := c.drawFlag
 	c.drawFlag = false
