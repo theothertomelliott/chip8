@@ -50,17 +50,17 @@ func run() {
 			return
 		}
 		// Toggle operation tracing
-		if win.Pressed(pixelgl.KeyT) {
+		if win.JustPressed(pixelgl.KeyT) {
 			trace = !trace
 		}
 
 		// Emulate one cycle
 		result, err := myChip8.EmulateCycle()
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("0x%X> %v", result.Before.PC, err)
 		}
 		if trace {
-			log.Println(result.Pseudo)
+			log.Printf("0x%X> (0x%X) %s", result.Before.PC, result.Opcode, result.Pseudo)
 		}
 
 		// If the draw flag is set, update the screen

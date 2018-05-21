@@ -59,6 +59,23 @@ type Chip8 struct {
 	opcodes map[uint16]opcodeHandler
 }
 
+// Result records the actions performed when handling an opcode.
+// This can be used for logging or other telemetry.
+type Result struct {
+	Opcode uint16
+	Pseudo string
+
+	Before ResultState
+	After  ResultState
+}
+
+// ResultState provides a snapshot of CPU state
+// for use in tracing.
+type ResultState struct {
+	PC uint16
+	V  [16]byte
+}
+
 func (c *Chip8) Initialize() {
 	// Set up opcode mapping
 	c.registerOpcodeHandlers()
@@ -127,17 +144,38 @@ func (c *Chip8) SetKey(index byte, down bool) {
 func (c *Chip8) GetGraphics() [64 * 32]byte {
 	return c.gfx
 }
+
+func (c *Chip8) currentState() ResultState {
+	return ResultState{
+		PC: c.pc,
+		V:  c.V,
+	}
+}
+
+// EmulateCycle will execute a single clock cycle on this CHIP-8 cpu.
+// Every cycle will return a Result containing information about the state before
+// and after this cycle.
+// Result will be populated regardless of whether or not an error is returned.
 func (c *Chip8) EmulateCycle() (Result, error) {
 	// Fetch Opcode
-	c.opcode = uint16(c.memory[c.pc])<<8 | uint16(c.memory[c.pc+1])
+	opcode := uint16(c.memory[c.pc])<<8 | uint16(c.memory[c.pc+1])
+
+	before := c.currentState()
 
 	// Decode and Handle Opcode
-	handler, ok := c.opcodes[c.opcode&0xF000]
+	handler, ok := c.opcodes[opcode&0xF000]
 	if !ok {
-		return Result{}, fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+		return Result{
+			Opcode: opcode,
+			Before: before,
+			After:  before,
+		}, fmt.Errorf("unknown opcode: 0x%X", c.opcode)
 	}
 
-	result, err := handler(c.opcode)
+	result, err := handler(opcode)
+	result.Opcode = opcode
+	result.Before = before
+	result.After = c.currentState()
 	if err != nil {
 		return result, err
 	}

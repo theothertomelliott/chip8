@@ -5,16 +5,7 @@ import (
 	"math/rand"
 )
 
-// Result records the actions performed when handling an opcode.
-// This can be used for logging or other telemetry.
-type Result struct {
-	Opcode uint16
-	Pseudo string
-
-	// TODO: Add other detail
-}
-
-type opcodeHandler func(code uint16) (Result, error)
+type opcodeHandler func(opcode uint16) (Result, error)
 
 func (c *Chip8) registerOpcodeHandlers() {
 	c.opcodes = map[uint16]opcodeHandler{
@@ -37,12 +28,10 @@ func (c *Chip8) registerOpcodeHandlers() {
 	}
 }
 
-func (c *Chip8) opcode0x0000(code uint16) (Result, error) {
-	result := Result{
-		Opcode: code,
-	}
+func (c *Chip8) opcode0x0000(opcode uint16) (Result, error) {
+	result := Result{}
 
-	switch c.opcode & 0x00FF {
+	switch opcode & 0x00FF {
 	case 0x00E0:
 		result.Pseudo = fmt.Sprint("disp_clear()")
 		// Clear display
@@ -54,100 +43,91 @@ func (c *Chip8) opcode0x0000(code uint16) (Result, error) {
 		c.pc = c.stack[c.sp] + 2
 
 	default:
-		return result, fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+		return result, fmt.Errorf("unknown opcode: 0x%X", opcode)
 	}
 	return result, nil
 }
 
-func (c *Chip8) opcode0x1000(code uint16) (Result, error) {
-	c.pc = c.opcode & 0x0FFF
+func (c *Chip8) opcode0x1000(opcode uint16) (Result, error) {
+	c.pc = opcode & 0x0FFF
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("goto 0x%X;", c.pc),
 	}, nil
 }
 
-func (c *Chip8) opcode0x2000(code uint16) (Result, error) {
+func (c *Chip8) opcode0x2000(opcode uint16) (Result, error) {
 	c.stack[c.sp] = c.pc
 	c.sp++
-	c.pc = c.opcode & 0x0FFF
+	c.pc = opcode & 0x0FFF
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("*(0x%X)()", c.pc),
 	}, nil
 }
 
-func (c *Chip8) opcode0x3000(code uint16) (Result, error) {
-	x := (c.opcode & 0x0F00) >> 8
-	nn := byte(c.opcode & 0x00FF)
+func (c *Chip8) opcode0x3000(opcode uint16) (Result, error) {
+	x := (opcode & 0x0F00) >> 8
+	nn := byte(opcode & 0x00FF)
 	if c.V[x] == nn {
 		c.pc += 4
 	} else {
 		c.pc += 2
 	}
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("if(V%d==0x%X)", x, nn),
 	}, nil
 }
 
-func (c *Chip8) opcode0x4000(code uint16) (Result, error) {
-	x := (c.opcode & 0x0F00) >> 8
-	nn := byte(c.opcode & 0x00FF)
+func (c *Chip8) opcode0x4000(opcode uint16) (Result, error) {
+	x := (opcode & 0x0F00) >> 8
+	nn := byte(opcode & 0x00FF)
 	if c.V[x] != nn {
 		c.pc += 4
 	} else {
 		c.pc += 2
 	}
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("if(V%d!=0x%X)", x, nn),
 	}, nil
 }
 
-func (c *Chip8) opcode0x5000(code uint16) (Result, error) {
-	x := (c.opcode & 0x0F00) >> 8
-	y := (c.opcode & 0x00F0) >> 4
+func (c *Chip8) opcode0x5000(opcode uint16) (Result, error) {
+	x := (opcode & 0x0F00) >> 8
+	y := (opcode & 0x00F0) >> 4
 	if c.V[x] == c.V[y] {
 		c.pc += 4
 	} else {
 		c.pc += 2
 	}
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("if(V%d==V%d)", x, y),
 	}, nil
 }
 
-func (c *Chip8) opcode0x6000(code uint16) (Result, error) {
-	x := (c.opcode & 0x0F00) >> 8
-	nn := byte(c.opcode & 0x00FF)
+func (c *Chip8) opcode0x6000(opcode uint16) (Result, error) {
+	x := (opcode & 0x0F00) >> 8
+	nn := byte(opcode & 0x00FF)
 	c.V[x] = nn
 	c.pc += 2
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("V%d = 0x%X", x, nn),
 	}, nil
 }
 
-func (c *Chip8) opcode0x7000(code uint16) (Result, error) {
-	x := (c.opcode & 0x0F00) >> 8
-	nn := byte(c.opcode & 0x00FF)
+func (c *Chip8) opcode0x7000(opcode uint16) (Result, error) {
+	x := (opcode & 0x0F00) >> 8
+	nn := byte(opcode & 0x00FF)
 	c.V[x] += nn
 	c.pc += 2
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("V%d += 0x%X", x, nn),
 	}, nil
 }
 
-func (c *Chip8) opcode0x8000(code uint16) (Result, error) {
-	result := Result{
-		Opcode: code,
-	}
-	x := (c.opcode & 0x0F00) >> 8
-	y := (c.opcode & 0x00F0) >> 4
-	switch c.opcode & 0x000F {
+func (c *Chip8) opcode0x8000(opcode uint16) (Result, error) {
+	result := Result{}
+	x := (opcode & 0x0F00) >> 8
+	y := (opcode & 0x00F0) >> 4
+	switch opcode & 0x000F {
 	case 0x0000:
 		c.V[x] = c.V[y]
 		c.pc += 2
@@ -202,58 +182,54 @@ func (c *Chip8) opcode0x8000(code uint16) (Result, error) {
 		c.pc += 2
 		result.Pseudo = fmt.Sprintf("V%d=V%d=V%d<<1", x, y, y)
 	default:
-		return Result{}, fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+		return Result{}, fmt.Errorf("unknown opcode: 0x%X", opcode)
 	}
 	return result, nil
 }
 
-func (c *Chip8) opcode0x9000(code uint16) (Result, error) {
-	x := (c.opcode & 0x0F00) >> 8
-	y := (c.opcode & 0x00F0) >> 4
+func (c *Chip8) opcode0x9000(opcode uint16) (Result, error) {
+	x := (opcode & 0x0F00) >> 8
+	y := (opcode & 0x00F0) >> 4
 	if c.V[x] != c.V[y] {
 		c.pc += 4
 	} else {
 		c.pc += 2
 	}
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("if(V%d!=V%d)", x, y),
 	}, nil
 }
 
-func (c *Chip8) opcode0xA000(code uint16) (Result, error) {
-	c.I = c.opcode & 0x0FFF
+func (c *Chip8) opcode0xA000(opcode uint16) (Result, error) {
+	c.I = opcode & 0x0FFF
 	c.pc += 2
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("I = 0x%X", c.I),
 	}, nil
 }
 
-func (c *Chip8) opcode0xB000(code uint16) (Result, error) {
-	nnn := c.opcode & 0x0FFF
+func (c *Chip8) opcode0xB000(opcode uint16) (Result, error) {
+	nnn := opcode & 0x0FFF
 	c.pc = uint16(c.V[0]) + nnn
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("PC=V0+0x%X", nnn),
 	}, nil
 }
 
-func (c *Chip8) opcode0xC000(code uint16) (Result, error) {
-	x := uint16(c.opcode&0x0F00) >> 8
-	nn := c.opcode & 0x00FF
+func (c *Chip8) opcode0xC000(opcode uint16) (Result, error) {
+	x := uint16(opcode&0x0F00) >> 8
+	nn := opcode & 0x00FF
 	c.V[x] = byte(rand.Float32()*255) & byte(nn)
 	c.pc += 2
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("V%d=rand()&0x%X", x, nn),
 	}, nil
 }
 
-func (c *Chip8) opcode0xD000(code uint16) (Result, error) {
-	x := uint16(c.V[(c.opcode&0x0F00)>>8])
-	y := uint16(c.V[(c.opcode&0x00F0)>>4])
-	height := c.opcode & 0x000F
+func (c *Chip8) opcode0xD000(opcode uint16) (Result, error) {
+	x := uint16(c.V[(opcode&0x0F00)>>8])
+	y := uint16(c.V[(opcode&0x00F0)>>4])
+	height := opcode & 0x000F
 	var pixel uint16
 
 	c.V[0xF] = 0
@@ -277,17 +253,14 @@ func (c *Chip8) opcode0xD000(code uint16) (Result, error) {
 	c.pc += 2
 
 	return Result{
-		Opcode: code,
 		Pseudo: fmt.Sprintf("draw(V%d,V%d,%d)", x, y, height),
 	}, nil
 }
 
-func (c *Chip8) opcode0xE000(code uint16) (Result, error) {
-	result := Result{
-		Opcode: code,
-	}
-	x := (c.opcode & 0x0F00) >> 8
-	switch c.opcode & 0x00FF {
+func (c *Chip8) opcode0xE000(opcode uint16) (Result, error) {
+	result := Result{}
+	x := (opcode & 0x0F00) >> 8
+	switch opcode & 0x00FF {
 	case 0x009E:
 		if c.key[c.V[x]] != 0 {
 			c.pc += 4
@@ -308,12 +281,10 @@ func (c *Chip8) opcode0xE000(code uint16) (Result, error) {
 	return result, nil
 }
 
-func (c *Chip8) opcode0xF000(code uint16) (Result, error) {
-	result := Result{
-		Opcode: code,
-	}
-	x := (c.opcode & 0x0F00) >> 8
-	switch c.opcode & 0x00FF {
+func (c *Chip8) opcode0xF000(opcode uint16) (Result, error) {
+	result := Result{}
+	x := (opcode & 0x0F00) >> 8
+	switch opcode & 0x00FF {
 	case 0x0007:
 		c.V[x] = c.delayTimer
 		c.pc += 2
@@ -367,7 +338,7 @@ func (c *Chip8) opcode0xF000(code uint16) (Result, error) {
 		c.pc += 2
 		result.Pseudo = fmt.Sprintf("reg_load(V%d,&I)", x)
 	default:
-		return Result{}, fmt.Errorf("unknown opcode: 0x%X (pc=0x%X)", c.opcode, c.pc)
+		return Result{}, fmt.Errorf("unknown opcode: 0x%X", opcode)
 	}
 
 	return result, nil
