@@ -6,4 +6,4 @@ http://www.multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter
 Details of opcodes at:
 https://en.wikipedia.org/wiki/CHIP-8
 */
-package main
+package chip8

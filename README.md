@@ -14,13 +14,13 @@ Some prerequisite libraries are needed for Pixel, see [Pixel requirements](https
 
 Once these prerequisites are installed, you can build and install this emulator using `go get`:
 
-    $ go get -u github.com/theothertomelliott/chip8
+    $ go get -u github.com/theothertomelliott/chip8/cmd/chip8
 
 ## Usage
 
 Assuming $GOPATH/bin is on your PATH, once installed, you can run the `chip8` binary at the commandline, specifying a ROM filename as argument:
 
-    $ chip8 [/path/to/rom.ch8]
+    $ chip8 [path/to/rom.ch8]
 
 ## Controls
 
