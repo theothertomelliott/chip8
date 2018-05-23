@@ -22,6 +22,11 @@ Assuming $GOPATH/bin is on your PATH, once installed, you can run the `chip8` bi
 
     $ chip8 [path/to/rom.ch8]
 
+For quick start, the Pong ROM has been included:
+
+    $ cd $GOPATH/src/github.com/theothertomelliott/chip8
+    $ chip8 data/pong.ch8
+
 ## Controls
 
 The CHIP-8 keypad is mapped to the keys:
