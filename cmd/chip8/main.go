@@ -97,11 +97,11 @@ func setupGraphics() {
 
 // Store key press state (Press and Release)
 var (
-	keyByIndex = []pixelgl.Button{
-		pixelgl.Key1, pixelgl.Key2, pixelgl.Key3, pixelgl.Key4,
-		pixelgl.KeyQ, pixelgl.KeyW, pixelgl.KeyE, pixelgl.KeyR,
-		pixelgl.KeyA, pixelgl.KeyS, pixelgl.KeyD, pixelgl.KeyF,
-		pixelgl.KeyZ, pixelgl.KeyX, pixelgl.KeyC, pixelgl.KeyV,
+	keyByIndex = map[uint16]pixelgl.Button{
+		0x1: pixelgl.Key1, 0x2: pixelgl.Key2, 0x3: pixelgl.Key3, 0xC: pixelgl.Key4,
+		0x4: pixelgl.KeyQ, 0x5: pixelgl.KeyW, 0x6: pixelgl.KeyE, 0xD: pixelgl.KeyR,
+		0x7: pixelgl.KeyA, 0x8: pixelgl.KeyS, 0x9: pixelgl.KeyD, 0xE: pixelgl.KeyF,
+		0xA: pixelgl.KeyZ, 0x0: pixelgl.KeyX, 0xB: pixelgl.KeyC, 0xF: pixelgl.KeyV,
 	}
 	keysDown [16]*time.Ticker
 )
