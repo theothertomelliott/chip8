@@ -5,8 +5,12 @@ import (
 	"math/rand"
 )
 
+// opcodeHandler processes an opcode and returns a Result describing the
+// operation performed, or an error if the opcode could not be handled.
 type opcodeHandler func(opcode uint16) (Result, error)
 
+// registerOpcodeHandlers maps opcode handler functions to the 0xF000 mask
+// of the opcodes that they handle
 func (c *Chip8) registerOpcodeHandlers() {
 	c.opcodes = map[uint16]opcodeHandler{
 		0x0000: c.opcode0x0000,
