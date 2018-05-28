@@ -88,7 +88,17 @@ type ResultState struct {
 // opcodes with calls to ExecuteCycle.
 func New(rom io.Reader) (*Chip8, error) {
 	c := &Chip8{}
+	c.initialize()
 
+	err := c.loadROM(rom)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func (c *Chip8) initialize() {
 	// Set up opcode mapping
 	c.registerOpcodeHandlers()
 
@@ -117,13 +127,6 @@ func New(rom io.Reader) (*Chip8, error) {
 
 	// Create a ticker at 60Hz
 	c.timerClock = time.NewTicker(time.Second / 60)
-
-	err := c.loadROM(rom)
-	if err != nil {
-		return nil, err
-	}
-
-	return c, nil
 }
 
 // loadROM loads a ROM into memory from an io.Reader

@@ -173,9 +173,9 @@ func (c *Chip8) opcode0x8000(opcode uint16) (Result, error) {
 		result.Pseudo = fmt.Sprintf("V%d += V%d", x, y)
 	case 0x0005:
 		if c.V[y] > c.V[x] {
-			c.V[0xF] = 0 //borrow
+			c.V[0xF] = 0 // borrow
 		} else {
-			c.V[0xF] = 1
+			c.V[0xF] = 1 // no borrow
 		}
 		c.V[x] -= c.V[y]
 		c.pc += 2
