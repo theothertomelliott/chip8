@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"time"
@@ -33,8 +34,10 @@ func run() {
 	// Set up render system and register input callbacks
 	setupGraphics()
 
+	flag.Parse()
+
 	// Open the ROM specified as argument ready to load
-	file, err := os.Open(os.Args[1])
+	file, err := os.Open(flag.Args()[0])
 	if err != nil {
 		log.Fatal(err)
 	}
