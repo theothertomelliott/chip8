@@ -37,11 +37,13 @@ func (c *Chip8) opcode0x0000(opcode uint16) (Result, error) {
 
 	switch opcode & 0x00FF {
 	case 0x00E0:
+		result.OpcodeType = "0x00E0"
 		result.Pseudo = fmt.Sprint("disp_clear()")
 		// Clear display
 		c.gfx = [64 * 32]byte{}
 		c.pc += 2
 	case 0x00EE:
+		result.OpcodeType = "0x00EE"
 		result.Pseudo = fmt.Sprint("return;")
 		c.sp--
 		c.pc = c.stack[c.sp] + 2
@@ -55,7 +57,8 @@ func (c *Chip8) opcode0x0000(opcode uint16) (Result, error) {
 func (c *Chip8) opcode0x1000(opcode uint16) (Result, error) {
 	c.pc = opcode & 0x0FFF
 	return Result{
-		Pseudo: fmt.Sprintf("goto 0x%X;", c.pc),
+		OpcodeType: "0x1NNN",
+		Pseudo:     fmt.Sprintf("goto 0x%X;", c.pc),
 	}, nil
 }
 
@@ -64,7 +67,8 @@ func (c *Chip8) opcode0x2000(opcode uint16) (Result, error) {
 	c.sp++
 	c.pc = opcode & 0x0FFF
 	return Result{
-		Pseudo: fmt.Sprintf("*(0x%X)()", c.pc),
+		OpcodeType: "0x2NNN",
+		Pseudo:     fmt.Sprintf("*(0x%X)()", c.pc),
 	}, nil
 }
 
@@ -77,7 +81,8 @@ func (c *Chip8) opcode0x3000(opcode uint16) (Result, error) {
 		c.pc += 2
 	}
 	return Result{
-		Pseudo: fmt.Sprintf("if(V%d==0x%X)", x, nn),
+		OpcodeType: "0x3XNN",
+		Pseudo:     fmt.Sprintf("if(V%d==0x%X)", x, nn),
 	}, nil
 }
 
@@ -90,7 +95,8 @@ func (c *Chip8) opcode0x4000(opcode uint16) (Result, error) {
 		c.pc += 2
 	}
 	return Result{
-		Pseudo: fmt.Sprintf("if(V%d!=0x%X)", x, nn),
+		OpcodeType: "0x4XNN",
+		Pseudo:     fmt.Sprintf("if(V%d!=0x%X)", x, nn),
 	}, nil
 }
 
@@ -103,7 +109,8 @@ func (c *Chip8) opcode0x5000(opcode uint16) (Result, error) {
 		c.pc += 2
 	}
 	return Result{
-		Pseudo: fmt.Sprintf("if(V%d==V%d)", x, y),
+		OpcodeType: "0x5XY0",
+		Pseudo:     fmt.Sprintf("if(V%d==V%d)", x, y),
 	}, nil
 }
 
@@ -113,7 +120,8 @@ func (c *Chip8) opcode0x6000(opcode uint16) (Result, error) {
 	c.V[x] = nn
 	c.pc += 2
 	return Result{
-		Pseudo: fmt.Sprintf("V%d = 0x%X", x, nn),
+		OpcodeType: "0x6XNN",
+		Pseudo:     fmt.Sprintf("V%d = 0x%X", x, nn),
 	}, nil
 }
 
@@ -123,7 +131,8 @@ func (c *Chip8) opcode0x7000(opcode uint16) (Result, error) {
 	c.V[x] += nn
 	c.pc += 2
 	return Result{
-		Pseudo: fmt.Sprintf("V%d += 0x%X", x, nn),
+		OpcodeType: "0x7XNN",
+		Pseudo:     fmt.Sprintf("V%d += 0x%X", x, nn),
 	}, nil
 }
 
@@ -135,18 +144,22 @@ func (c *Chip8) opcode0x8000(opcode uint16) (Result, error) {
 	case 0x0000:
 		c.V[x] = c.V[y]
 		c.pc += 2
+		result.OpcodeType = "0x8XY0"
 		result.Pseudo = fmt.Sprintf("V%d = V%d", x, y)
 	case 0x0001:
 		c.V[x] |= c.V[y]
 		c.pc += 2
+		result.OpcodeType = "0x8XY1"
 		result.Pseudo = fmt.Sprintf("V%d |= V%d", x, y)
 	case 0x0002:
 		c.V[x] &= c.V[y]
 		c.pc += 2
+		result.OpcodeType = "0x8XY2"
 		result.Pseudo = fmt.Sprintf("V%d &= V%d", x, y)
 	case 0x0003:
 		c.V[x] ^= c.V[y]
 		c.pc += 2
+		result.OpcodeType = "0x8XY3"
 		result.Pseudo = fmt.Sprintf("V%d ^= V%d", x, y)
 	case 0x0004:
 		if c.V[y] > (0xFF - c.V[x]) {
@@ -156,6 +169,7 @@ func (c *Chip8) opcode0x8000(opcode uint16) (Result, error) {
 		}
 		c.V[x] += c.V[y]
 		c.pc += 2
+		result.OpcodeType = "0x8XY4"
 		result.Pseudo = fmt.Sprintf("V%d += V%d", x, y)
 	case 0x0005:
 		if c.V[y] > c.V[x] {
@@ -165,11 +179,13 @@ func (c *Chip8) opcode0x8000(opcode uint16) (Result, error) {
 		}
 		c.V[x] -= c.V[y]
 		c.pc += 2
+		result.OpcodeType = "0x8XY5"
 		result.Pseudo = fmt.Sprintf("V%d -= V%d", x, y)
 	case 0x0006:
 		c.V[x] = c.V[y] >> 1
 		c.V[0xF] = c.V[y] & 0x01
 		c.pc += 2
+		result.OpcodeType = "0x8XY6"
 		result.Pseudo = fmt.Sprintf("V%d=V%d=V%d>>1", x, y, y)
 	case 0x0007:
 		if c.V[x] > c.V[y] {
@@ -179,11 +195,13 @@ func (c *Chip8) opcode0x8000(opcode uint16) (Result, error) {
 		}
 		c.V[x] = c.V[y] - c.V[x]
 		c.pc += 2
+		result.OpcodeType = "0x8XY7"
 		result.Pseudo = fmt.Sprintf("V%d=V%d-V%d", x, y, x)
 	case 0x000E:
 		c.V[x] = c.V[y] << 1
 		c.V[0xF] = c.V[y] & 0x80
 		c.pc += 2
+		result.OpcodeType = "0x8XYE"
 		result.Pseudo = fmt.Sprintf("V%d=V%d=V%d<<1", x, y, y)
 	default:
 		return Result{}, fmt.Errorf("unknown opcode: 0x%X", opcode)
@@ -200,7 +218,8 @@ func (c *Chip8) opcode0x9000(opcode uint16) (Result, error) {
 		c.pc += 2
 	}
 	return Result{
-		Pseudo: fmt.Sprintf("if(V%d!=V%d)", x, y),
+		OpcodeType: "0x9XY0",
+		Pseudo:     fmt.Sprintf("if(V%d!=V%d)", x, y),
 	}, nil
 }
 
@@ -208,7 +227,8 @@ func (c *Chip8) opcode0xA000(opcode uint16) (Result, error) {
 	c.I = opcode & 0x0FFF
 	c.pc += 2
 	return Result{
-		Pseudo: fmt.Sprintf("I = 0x%X", c.I),
+		OpcodeType: "0xANNN",
+		Pseudo:     fmt.Sprintf("I = 0x%X", c.I),
 	}, nil
 }
 
@@ -216,7 +236,8 @@ func (c *Chip8) opcode0xB000(opcode uint16) (Result, error) {
 	nnn := opcode & 0x0FFF
 	c.pc = uint16(c.V[0]) + nnn
 	return Result{
-		Pseudo: fmt.Sprintf("PC=V0+0x%X", nnn),
+		OpcodeType: "0xBNNN",
+		Pseudo:     fmt.Sprintf("PC=V0+0x%X", nnn),
 	}, nil
 }
 
@@ -226,7 +247,8 @@ func (c *Chip8) opcode0xC000(opcode uint16) (Result, error) {
 	c.V[x] = byte(rand.Float32()*255) & byte(nn)
 	c.pc += 2
 	return Result{
-		Pseudo: fmt.Sprintf("V%d=rand()&0x%X", x, nn),
+		OpcodeType: "0xCXNN",
+		Pseudo:     fmt.Sprintf("V%d=rand()&0x%X", x, nn),
 	}, nil
 }
 
@@ -257,7 +279,8 @@ func (c *Chip8) opcode0xD000(opcode uint16) (Result, error) {
 	c.pc += 2
 
 	return Result{
-		Pseudo: fmt.Sprintf("draw(V%d,V%d,%d)", x, y, height),
+		OpcodeType: "0xDXYN",
+		Pseudo:     fmt.Sprintf("draw(V%d,V%d,%d)", x, y, height),
 	}, nil
 }
 
@@ -272,6 +295,7 @@ func (c *Chip8) opcode0xE000(opcode uint16) (Result, error) {
 		} else {
 			c.pc += 2
 		}
+		result.OpcodeType = "0xEX9E"
 		result.Pseudo = fmt.Sprintf("if(key()==V%d)", x)
 	case 0x00A1:
 		if c.key[c.V[x]] == 0 {
@@ -280,6 +304,7 @@ func (c *Chip8) opcode0xE000(opcode uint16) (Result, error) {
 			c.key[c.V[x]] = 0
 			c.pc += 2
 		}
+		result.OpcodeType = "0xEXA1"
 		result.Pseudo = fmt.Sprintf("if(key()!=V%d)", x)
 	}
 	return result, nil
@@ -292,6 +317,7 @@ func (c *Chip8) opcode0xF000(opcode uint16) (Result, error) {
 	case 0x0007:
 		c.V[x] = c.delayTimer
 		c.pc += 2
+		result.OpcodeType = "0xFX07"
 		result.Pseudo = fmt.Sprint("Vx = get_delay()")
 	case 0x000A:
 		for index, k := range c.key {
@@ -302,44 +328,52 @@ func (c *Chip8) opcode0xF000(opcode uint16) (Result, error) {
 			}
 		}
 		c.key[c.V[x]] = 0
+		result.OpcodeType = "0xFX0A"
 		result.Pseudo = fmt.Sprint("Vx = get_key()")
 	case 0x0015:
 		c.delayTimer = c.V[x]
 		c.pc += 2
+		result.OpcodeType = "0xFX15"
 		result.Pseudo = fmt.Sprintf("delay_timer(V%d)", x)
 
 	case 0x0018:
 		c.soundTimer = c.V[x]
 		c.pc += 2
+		result.OpcodeType = "0xFX18"
 		result.Pseudo = fmt.Sprintf("sound_timer(V%d)", x)
 
 	case 0x001E:
 		c.I += uint16(c.V[x])
 		c.pc += 2
+		result.OpcodeType = "0xFX1E"
 		result.Pseudo = fmt.Sprintf("I += V%d", x)
 
 	case 0x0029:
 		// Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
 		c.I = uint16(c.V[x]) * 5
 		c.pc += 2
+		result.OpcodeType = "0xFX29"
 		result.Pseudo = fmt.Sprintf("I=sprite_addr[V%d]", x)
 	case 0x0033:
 		c.memory[c.I] = c.V[x] / 100
 		c.memory[c.I+1] = (c.V[x] / 10) % 10
 		c.memory[c.I+2] = (c.V[x] % 100) % 10
 		c.pc += 2
+		result.OpcodeType = "0xFX33"
 		result.Pseudo = fmt.Sprintf("set_BCD(V%d);\n*(I + 0) = BCD(3)\n*(I + 1) = BCD(2)\n*(I + 2) = BCD(1)", x)
 	case 0x0055:
 		for i := uint16(0); i <= x; i++ {
 			c.memory[c.I+i] = c.V[i]
 		}
 		c.pc += 2
+		result.OpcodeType = "0xFX55"
 		result.Pseudo = fmt.Sprintf("reg_dump(V%d, &I)", x)
 	case 0x0065:
 		for i := uint16(0); i <= x; i++ {
 			c.V[i] = c.memory[c.I+i]
 		}
 		c.pc += 2
+		result.OpcodeType = "0xFX65"
 		result.Pseudo = fmt.Sprintf("reg_load(V%d,&I)", x)
 	default:
 		return Result{}, fmt.Errorf("unknown opcode: 0x%X", opcode)

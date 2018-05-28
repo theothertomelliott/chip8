@@ -2,8 +2,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/faiface/pixel"
@@ -20,7 +22,10 @@ const (
 	keyRepeatDuration         = time.Second / 5
 )
 
-var win *pixelgl.Window
+var (
+	win         *pixelgl.Window
+	listOpcodes = flag.Bool("listOpcodes", false, "If provided, a list of opcodes used by a ROM while executing will be output on exit.")
+)
 
 func main() {
 	pixelgl.Run(run)
@@ -35,6 +40,9 @@ func run() {
 	setupGraphics()
 
 	flag.Parse()
+
+	// Record usage of particular opcodes
+	var opcodesUsed = make(map[string]struct{})
 
 	// Open the ROM specified as argument ready to load
 	file, err := os.Open(flag.Args()[0])
@@ -55,7 +63,7 @@ func run() {
 	// Emulation loop
 	for !win.Closed() {
 		if win.Pressed(pixelgl.KeyEscape) {
-			return
+			break
 		}
 		// Toggle operation tracing
 		if win.JustPressed(pixelgl.KeyT) {
@@ -67,6 +75,9 @@ func run() {
 		if err != nil {
 			log.Fatalf("0x%X> %v", result.Before.PC, err)
 		}
+		// Record that this type of opcode was used
+		opcodesUsed[result.OpcodeType] = struct{}{}
+		// Log this step if tracing is enabled
 		if trace {
 			log.Printf("0x%X> (0x%X) %s", result.Before.PC, result.Opcode, result.Pseudo)
 		}
@@ -82,6 +93,17 @@ func run() {
 
 		// Wait for the next tick
 		<-ticker.C
+	}
+
+	if *listOpcodes {
+		var opcodes []string
+		for opcode := range opcodesUsed {
+			opcodes = append(opcodes, opcode)
+		}
+		sort.Strings(opcodes)
+		for _, opcode := range opcodes {
+			fmt.Println(opcode)
+		}
 	}
 }
 

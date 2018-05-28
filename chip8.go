@@ -64,8 +64,9 @@ type Chip8 struct {
 // Result records the actions performed when handling an opcode.
 // This can be used for logging or other telemetry.
 type Result struct {
-	Opcode uint16
-	Pseudo string
+	Opcode     uint16
+	OpcodeType string
+	Pseudo     string
 
 	Before ResultState
 	After  ResultState
