@@ -45,8 +45,8 @@ func (c *Chip8) opcode0x0000(opcode uint16) (Result, error) {
 	case 0x00EE:
 		result.OpcodeType = "0x00EE"
 		result.Pseudo = fmt.Sprint("return;")
-		c.sp--
 		c.pc = c.stack[c.sp] + 2
+		c.sp--
 
 	default:
 		return result, fmt.Errorf("unknown opcode: 0x%X", opcode)
@@ -63,8 +63,8 @@ func (c *Chip8) opcode0x1000(opcode uint16) (Result, error) {
 }
 
 func (c *Chip8) opcode0x2000(opcode uint16) (Result, error) {
-	c.stack[c.sp] = c.pc
 	c.sp++
+	c.stack[c.sp] = c.pc
 	c.pc = opcode & 0x0FFF
 	return Result{
 		OpcodeType: "0x2NNN",
