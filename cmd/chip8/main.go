@@ -8,6 +8,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/faiface/beep/speaker"
+	"github.com/faiface/beep/wav"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
@@ -57,6 +59,8 @@ func run() {
 		log.Fatal(err)
 	}
 
+	go handleBeeps(myChip8)
+
 	// Should trace logging be output?
 	var trace bool
 
@@ -104,6 +108,16 @@ func run() {
 		for _, opcode := range opcodes {
 			fmt.Println(opcode)
 		}
+	}
+}
+
+func handleBeeps(c *chip8.Chip8) {
+	f, _ := os.Open("data/sound/beep-02.wav")
+	s, format, _ := wav.Decode(f)
+	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	for _ = range c.Beep() {
+		s.Seek(0)
+		speaker.Play(s)
 	}
 }
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"time"
 )
 
@@ -59,6 +58,8 @@ type Chip8 struct {
 	timerClock *time.Ticker
 
 	opcodes map[uint16]opcodeHandler
+
+	beepOut chan struct{}
 }
 
 // Result records the actions performed when handling an opcode.
@@ -125,6 +126,9 @@ func (c *Chip8) initialize() {
 	c.delayTimer = 0
 	c.soundTimer = 0
 
+	// Set up output for beeps
+	c.beepOut = make(chan struct{})
+
 	// Create a ticker at 60Hz
 	c.timerClock = time.NewTicker(time.Second / 60)
 }
@@ -154,6 +158,11 @@ func (c *Chip8) SetKeyDown(index byte) {
 // !0 = on.
 func (c *Chip8) GetGraphics() [64 * 32]byte {
 	return c.gfx
+}
+
+// Beep returns a channel that outputs a value whenever a beep is to be played.
+func (c *Chip8) Beep() <-chan struct{} {
+	return c.beepOut
 }
 
 // EmulateCycle will execute a single clock cycle on this CHIP-8 cpu.
@@ -193,9 +202,13 @@ func (c *Chip8) EmulateCycle() (Result, error) {
 
 		if c.soundTimer > 0 {
 			if c.soundTimer == 1 {
-				log.Println("BEEP!")
-				c.soundTimer--
+				// Don't block if the beep routine isn't ready
+				select {
+				case c.beepOut <- struct{}{}:
+				default:
+				}
 			}
+			c.soundTimer--
 		}
 	default:
 		// Skip the timers
