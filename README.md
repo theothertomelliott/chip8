@@ -8,9 +8,13 @@ This project was based on [Laurence Muller](http://www.multigesture.net/about/)'
 
 Graphics and keyboard input are implemented using [Pixel](https://github.com/faiface/pixel).
 
+Sound is output via [Oto](github.com/hajimehoshi/oto), with a [Wave Generator](github.com/theothertomelliott/wavegenerator) built as a supplementary project.
+
 ## Building/Installation
 
 Some prerequisite libraries are needed for Pixel, see [Pixel requirements](https://github.com/faiface/pixel#requirements) for more details.
+
+On Linux and FreeBSD, additional prerequesites will also be needed for audio, see the [Oto Readme](https://github.com/hajimehoshi/oto).
 
 Once these prerequisites are installed, you can build and install this emulator using `go get`:
 

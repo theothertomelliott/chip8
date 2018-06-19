@@ -8,12 +8,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/faiface/beep/speaker"
-	"github.com/faiface/beep/wav"
 	"github.com/faiface/pixel"
 	"github.com/faiface/pixel/imdraw"
 	"github.com/faiface/pixel/pixelgl"
 	"github.com/theothertomelliott/chip8"
+	"github.com/theothertomelliott/wavegenerator"
 	"golang.org/x/image/colornames"
 )
 
@@ -112,12 +111,14 @@ func run() {
 }
 
 func handleBeeps(c *chip8.Chip8) {
-	f, _ := os.Open("data/sound/beep-02.wav")
-	s, format, _ := wav.Decode(f)
-	speaker.Init(format.SampleRate, format.SampleRate.N(time.Second/10))
+	player, err := wavegenerator.NewPlayer(44100)
+	if err != nil {
+		panic(err)
+	}
+	defer player.Close()
+
 	for _ = range c.Beep() {
-		s.Seek(0)
-		speaker.Play(s)
+		player.Play(time.Second/4, wavegenerator.TriangleTone(440))
 	}
 }
 
