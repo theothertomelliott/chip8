@@ -117,8 +117,9 @@ func handleBeeps(c *chip8.Chip8) {
 	}
 	defer player.Close()
 
-	for _ = range c.Beep() {
-		player.Play(time.Second/4, wavegenerator.TriangleTone(440))
+	tone := wavegenerator.NewTone(time.Second/4, 440, wavegenerator.Triangle)
+	for range c.Beep() {
+		player.Play(tone)
 	}
 }
 
